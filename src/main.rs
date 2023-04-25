@@ -5,18 +5,20 @@ fn main() {
     println!("Press h for help");
     io::stdin().read_line(&mut input_mode).expect("no");
 
+    let platform: String = String::from(env::consts::OS);
+
     if input_mode.trim() == "h" {
         println!("p1 (Preset 1): Native resolution at 60 fps \np2 (Preset 2): 720p resolution at 30 fps \np3 (Preset 3): Native resolution at 30 fps");
         main();
     }
     else if input_mode.trim() == "p1" {
-        invoke_ffmpeg(&String::from("native"), &String::from("60"), &String::from("test.mp4"));
+        invoke_ffmpeg(&platform, &String::from("native"), &String::from("60"), &String::from("test.mp4"));
     }
     else if input_mode.trim() == "p2" {
-        invoke_ffmpeg(&String::from("1280x720"), &String::from("30"), &String::from("test.mp4"));
+        invoke_ffmpeg(&platform, &String::from("1280x720"), &String::from("30"), &String::from("test.mp4"));
     }
     else if input_mode.trim() == "p3" {
-        invoke_ffmpeg(&String::from("native"), &String::from("30"), &String::from("test.mp4"));
+        invoke_ffmpeg(&platform, &String::from("native"), &String::from("30"), &String::from("test.mp4"));
     }
     else if input_mode.trim() == "c" {
         query_args();
@@ -33,31 +35,55 @@ fn query_args() {
     let mut resolution: String = String::new();
     let mut framerate: String = String::new();
     let mut destination: String = String::new();
+    let platform: String = String::from(env::consts::OS);
+
     println!("Choose a resolution");
     io::stdin().read_line(&mut resolution).expect("no");
     println!("Choose a framerate");
     io::stdin().read_line(&mut framerate).expect("no");
     println!("Choose a destination");
     io::stdin().read_line(&mut destination).expect("no");
-    invoke_ffmpeg(&resolution, &framerate, &destination);
+    let platform = String::from("a");
+    invoke_ffmpeg(&platform, &resolution, &framerate, &destination);
 }
 
-fn invoke_ffmpeg(resolution: &String, framerate: &String, destination: &String) {
-    if resolution.trim() == "native" {
-        Command::new("ffmpeg").arg("-f").arg("x11grab")
-            .arg("-framerate").arg(framerate)
-            .arg("-i").arg(":0")
-            .arg("-c:v").arg("libx264").arg("-preset").arg("ultrafast").arg("-tune").arg("zerolatency")
-            .arg("-f").arg("flv").arg(destination)
-            .status().expect("Cannot open ffmpeg");
+fn invoke_ffmpeg(platform: &String, resolution: &String, framerate: &String, destination: &String) {
+    if platform == "linux" {
+        if resolution.trim() == "native" {
+            Command::new("ffmpeg").arg("-f").arg("x11grab")
+                .arg("-framerate").arg(framerate)
+                .arg("-i").arg(":0")
+                .arg("-c:v").arg("libx264").arg("-preset").arg("ultrafast").arg("-tune").arg("zerolatency")
+                .arg("-f").arg("flv").arg(destination)
+                .status().expect("Cannot open ffmpeg");
+        }
+        else {
+            Command::new("ffmpeg").arg("-f").arg("x11grab")
+                .arg("-framerate").arg(framerate)
+                .arg("-i").arg(":0")
+                .arg("-s").arg(resolution)
+                .arg("-c:v").arg("libx264").arg("-preset").arg("ultrafast").arg("-tune").arg("zerolatency")
+                .arg("-f").arg("flv").arg(destination)
+                .status().expect("Cannot open ffmpeg");
+        }
     }
-    else {
-        Command::new("ffmpeg").arg("-f").arg("x11grab")
-            .arg("-framerate").arg(framerate)
-            .arg("-i").arg(":0")
-            .arg("-vf").arg(String::from("resize=") + resolution)
-            .arg("-c:v").arg("libx264").arg("-preset").arg("ultrafast").arg("-tune").arg("zerolatency")
-            .arg("-f").arg("flv").arg(destination)
-            .status().expect("Cannot open ffmpeg");
+    else if platform == "windows" {
+        if resolution.trim() == "native" {
+            Command::new("ffmpeg").arg("-f").arg("dshow")
+                .arg("-framerate").arg(framerate)
+                .arg("-i").arg("video=")
+                .arg("-c:v").arg("libx264").arg("-preset").arg("ultrafast").arg("-tune").arg("zerolatency")
+                .arg("-f").arg("flv").arg(destination)
+                .status().expect("Cannot open ffmpeg");
+        }
+        else {
+            Command::new("ffmpeg").arg("-f").arg("dshow")
+                .arg("-framerate").arg(framerate)
+                .arg("-i").arg("video=")
+                .arg("-s").arg(resolution)
+                .arg("-c:v").arg("libx264").arg("-preset").arg("ultrafast").arg("-tune").arg("zerolatency")
+                .arg("-f").arg("flv").arg(destination)
+                .status().expect("Cannot open ffmpeg");
+        }
     }
 }
