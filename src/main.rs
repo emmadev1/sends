@@ -5,6 +5,13 @@ fn main() {
     println!("Choose destination");
     io::stdin().read_line(&mut dest).expect("no");
 
+    if dest.trim() == "q" {
+        return
+    }
+    else if dest.trim() == "local" {
+        dest = String::from("udp://127.0.0.1:9000");
+    }
+
     let platform: String = String::from(env::consts::OS);
 
     loop {
@@ -28,7 +35,7 @@ fn main() {
             break
         }
         else if input_mode.trim() == "c" {
-            query_args(&dest);
+            query_args(&dest, &platform);
             break
         }
         else if input_mode.trim() == "q" {
@@ -41,10 +48,9 @@ fn main() {
     }
 }
 
-fn query_args(destination: &String) {
+fn query_args(destination: &String, platform: &String) {
     let mut resolution: String = String::new();
     let mut framerate: String = String::new();
-    let platform: String = String::from(env::consts::OS);
 
     println!("Choose a resolution");
     io::stdin().read_line(&mut resolution).expect("no");
@@ -62,10 +68,11 @@ fn invoke_ffmpeg(platform: &String, resolution: &String, framerate: &String, des
         video_in = "dshow";
     }
     else {
-        panic!("Platform unknown");
+        panic!("Platform unknown or not supported");
     }
 
     if resolution.trim() == "native" {
+        Command::new("mpv").arg(destination).arg("-profile=low-latency").stdout(Stdio::null()).spawn().expect("Cannot open mpv");
         Command::new("ffmpeg").arg("-f").arg(video_in)
             .arg("-framerate").arg(framerate)
             .arg("-i").arg(":0")
@@ -74,6 +81,7 @@ fn invoke_ffmpeg(platform: &String, resolution: &String, framerate: &String, des
             .status().expect("Cannot open ffmpeg");
     }
     else {
+        Command::new("mpv").arg(destination).arg("-profile=low-latency").stdout(Stdio::null()).spawn().expect("Cannot open mpv");
         Command::new("ffmpeg").arg("-f").arg(video_in)
             .arg("-framerate").arg(framerate)
             .arg("-i").arg(":0")
