@@ -77,7 +77,7 @@ fn invoke_ffmpeg(platform: &String, resolution: &String, framerate: &String, des
             .arg("-framerate").arg(framerate)
             .arg("-i").arg(":0")
             .arg("-c:v").arg("libx264").arg("-preset").arg("ultrafast").arg("-tune").arg("zerolatency")
-            .arg("-f").arg("flv").arg(destination)
+            .arg("-f").arg("mpegts").arg(destination)
             .status().expect("Cannot open ffmpeg");
     }
     else {
@@ -87,7 +87,7 @@ fn invoke_ffmpeg(platform: &String, resolution: &String, framerate: &String, des
             .arg("-i").arg(":0")
             .arg("-s").arg(resolution)
             .arg("-c:v").arg("libx264").arg("-preset").arg("ultrafast").arg("-tune").arg("zerolatency")
-            .arg("-f").arg("flv").arg(destination)
+            .arg("-f").arg("mpegts").arg(destination)
             .status().expect("Cannot open ffmpeg");
     }
 }
