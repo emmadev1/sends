@@ -82,7 +82,9 @@ fn invoke_ffmpeg(platform: &String, resolution: &String, framerate: &String, des
     }
 
     if resolution.trim() == "native" {
-        Command::new(mplayer).arg(destination).arg("-profile=low-latency").stdout(Stdio::null()).spawn().expect("Cannot open mpv");
+        if destination.trim() == "udp://127.0.0.1:9000" {
+            Command::new(mplayer).arg(destination).arg("-profile=low-latency").stdout(Stdio::null()).spawn().expect("Cannot open mpv");
+        }
         Command::new(binary).arg("-f").arg(video_in)
             .arg("-framerate").arg(framerate)
             .arg("-i").arg(":0")
@@ -91,7 +93,9 @@ fn invoke_ffmpeg(platform: &String, resolution: &String, framerate: &String, des
             .status().expect("Cannot open ffmpeg");
     }
     else {
-        Command::new(mplayer).arg(destination).arg("-profile=low-latency").stdout(Stdio::null()).spawn().expect("Cannot open mpv");
+        if destination.trim() == "udp://127.0.0.1:9000" {
+            Command::new(mplayer).arg(destination).arg("-profile=low-latency").stdout(Stdio::null()).spawn().expect("Cannot open mpv");
+        }
         Command::new(binary).arg("-f").arg(video_in)
             .arg("-framerate").arg(framerate)
             .arg("-i").arg(":0")
