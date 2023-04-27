@@ -1,6 +1,10 @@
-use std::{process::{Command, Stdio}, io, env};
+use std::{process::{Command, Stdio}, io, env, thread};
+
+pub mod gui;
 
 fn main() {
+    thread::spawn(|| {gui::main_gui()});
+
     let mut dest: String = String::new();
     println!("Choose destination");
     io::stdin().read_line(&mut dest).expect("no");
@@ -61,19 +65,25 @@ fn query_args(destination: &String, platform: &String) {
 
 fn invoke_ffmpeg(platform: &String, resolution: &String, framerate: &String, destination: &String) {
     let video_in;
+    let binary;
+    let mplayer;
     if platform == "linux" {
         video_in = "x11grab";
+        binary = "ffmpeg";
+        mplayer = "mpv";
     }
     else if platform == "windows" {
         video_in = "dshow";
+        binary = "ffmpeg.exe";
+        mplayer = "mpv.exe";
     }
     else {
         panic!("Platform unknown or not supported");
     }
 
     if resolution.trim() == "native" {
-        Command::new("mpv").arg(destination).arg("-profile=low-latency").stdout(Stdio::null()).spawn().expect("Cannot open mpv");
-        Command::new("ffmpeg").arg("-f").arg(video_in)
+        Command::new(mplayer).arg(destination).arg("-profile=low-latency").stdout(Stdio::null()).spawn().expect("Cannot open mpv");
+        Command::new(binary).arg("-f").arg(video_in)
             .arg("-framerate").arg(framerate)
             .arg("-i").arg(":0")
             .arg("-c:v").arg("libx264").arg("-preset").arg("ultrafast").arg("-tune").arg("zerolatency")
@@ -81,8 +91,8 @@ fn invoke_ffmpeg(platform: &String, resolution: &String, framerate: &String, des
             .status().expect("Cannot open ffmpeg");
     }
     else {
-        Command::new("mpv").arg(destination).arg("-profile=low-latency").stdout(Stdio::null()).spawn().expect("Cannot open mpv");
-        Command::new("ffmpeg").arg("-f").arg(video_in)
+        Command::new(mplayer).arg(destination).arg("-profile=low-latency").stdout(Stdio::null()).spawn().expect("Cannot open mpv");
+        Command::new(binary).arg("-f").arg(video_in)
             .arg("-framerate").arg(framerate)
             .arg("-i").arg(":0")
             .arg("-s").arg(resolution)

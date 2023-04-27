@@ -4,7 +4,7 @@ use gtk::{glib, Application, ApplicationWindow, Button};
 
 const APP_ID: &str = "org.gtk.sends";
 
-fn main() -> glib::ExitCode {
+pub fn main_gui() -> glib::ExitCode {
     let app = Application::builder().application_id(APP_ID).build();
 
     app.connect_activate(build_ui);
