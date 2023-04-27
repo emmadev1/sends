@@ -1,15 +1,27 @@
-use std::{process::{Command, Stdio}, io, env, thread};
+use std::{process::{Command, Stdio}, io, env, thread, fs, mem};
+use toml::Table;
 
 pub mod gui;
+
+#[derive(Debug, PartialEq)]
+struct Config {
+    dest: String,
+    framerate: i64,
+    resolution: String,
+}
 
 fn main() {
     //thread::spawn(|| {gui::main_gui()});
 
-    let args: Vec<String> = env::args().collect();
-
     let mut dest: String = String::new();
 
+    let configs: Option<Config> = read_config();
+    if configs == None {
+        drop(configs);
+    }
+
     //Argument checking loop, all variables that are affected by it must be declared before this
+    let args: Vec<String> = env::args().collect();
     for i in &args {
         if i == "--local" || i == "-l" {
             dest = String::from("local");
@@ -132,4 +144,30 @@ fn print_help() {
     println!("Sends, a simple application to stream video and audio to friends\n");
     println!(" -l, --local\t\tStream to udp://127.0.0.1:9000");
     println!(" -h, --help\t\tPrint this message");
+}
+
+fn read_config() -> Option<Config> {
+    let config_table = fs::read_to_string("config.toml").expect("Cannot read config file").parse::<Table>().unwrap();
+
+    if config_table.is_empty() == true {
+        println!("Config file empty");
+        return None
+    }
+
+    let mut configs: Config = Config {dest: String::new(),
+        framerate: 0,
+        resolution: String::new()};
+
+    if config_table["config"].get("dest") != None {
+        configs.dest = String::from(config_table["config"]["dest"].as_str()?)
+    }
+    if config_table["config"].get("framerate") != None {
+        configs.framerate = config_table["config"]["framerate"].as_integer().unwrap()
+    }
+    if config_table["config"].get("resolution") != None {
+        configs.resolution = String::from(config_table["config"]["resolution"].as_str()?)
+    }
+
+    println!("{:?}", configs);
+    return Some(configs)
 }
