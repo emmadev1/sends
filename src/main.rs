@@ -14,12 +14,16 @@ fn main() {
         if i == "--local" || i == "-l" {
             dest = String::from("local");
         }
+        else if i == "-h" || i == "--help" {
+            print_help();
+            return
+        }
     }
 
     if dest.trim() == "local" {
         dest = String::from("udp://127.0.0.1:9000");
     }
-    else if dest == String::new() {
+    else if dest.is_empty() {
         println!("Choose destination");
         io::stdin().read_line(&mut dest).expect("no");
     }
@@ -122,4 +126,10 @@ fn invoke_ffmpeg(platform: &String, resolution: &String, framerate: &String, des
             .arg("-f").arg("mpegts").arg(destination)
             .status().expect("Cannot open ffmpeg");
     }
+}
+
+fn print_help() {
+    println!("Sends, a simple application to stream video and audio to friends\n");
+    println!(" -l, --local\t\tStream to udp://127.0.0.1:9000");
+    println!(" -h, --help\t\tPrint this message");
 }
