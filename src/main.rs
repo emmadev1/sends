@@ -3,28 +3,46 @@ use std::{process::{Command, Stdio}, io, env, thread};
 pub mod gui;
 
 fn main() {
-    thread::spawn(|| {gui::main_gui()});
+    //thread::spawn(|| {gui::main_gui()});
+
+    let args: Vec<String> = env::args().collect();
 
     let mut dest: String = String::new();
-    println!("Choose destination");
-    io::stdin().read_line(&mut dest).expect("no");
+
+    //Argument checking loop, all variables that are affected by it must be declared before this
+    for i in &args {
+        if i == "--local" || i == "-l" {
+            dest = String::from("local");
+        }
+    }
+
+    if dest.trim() == "local" {
+        dest = String::from("udp://127.0.0.1:9000");
+    }
+    else if dest == String::new() {
+        println!("Choose destination");
+        io::stdin().read_line(&mut dest).expect("no");
+    }
+    else {
+        panic!();
+    }
 
     if dest.trim() == "q" {
         return
     }
-    else if dest.trim() == "local" {
-        dest = String::from("udp://127.0.0.1:9000");
-    }
 
     let platform: String = String::from(env::consts::OS);
+    println!("Press h for help");
 
     loop {
         let mut input_mode: String = String::new();
-        println!("Press h for help");
         io::stdin().read_line(&mut input_mode).expect("no");
 
         if input_mode.trim() == "h" {
-            println!("p1 (Preset 1): Native resolution at 60 fps \np2 (Preset 2): 720p resolution at 30 fps \np3 (Preset 3): Native resolution at 30 fps");
+            println!("p1 (Preset 1): Native resolution at 60 fps");
+            println!("p2 (Preset 2): 720p resolution at 30 fps");
+            println!("p3 (Preset 3): Native resolution at 30 fps");
+            println!("c (Custom): Custom settings for resolution and framerate");
         }
         else if input_mode.trim() == "p1" {
             invoke_ffmpeg(&platform, &String::from("native"), &String::from("60"), &dest.trim().to_string());
