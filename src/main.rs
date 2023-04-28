@@ -1,4 +1,4 @@
-use std::{process::{Command, Stdio}, io, env, thread, fs, mem};
+use std::{process::{Command, Stdio}, io, env, thread, fs, path::Path};
 use toml::Table;
 
 pub mod gui;
@@ -6,8 +6,11 @@ pub mod gui;
 #[derive(Debug, PartialEq)]
 struct Config {
     dest: String,
-    framerate: i64,
+    framerate: String,
     resolution: String,
+    mplayer: String,
+    ffmpeg_binary: String,
+    platform: String
 }
 
 fn main() {
@@ -15,16 +18,13 @@ fn main() {
 
     let mut dest: String = String::new();
 
-    let configs: Option<Config> = read_config();
-    if configs == None {
-        drop(configs);
-    }
+    let mut configs: Config = read_config();
 
     //Argument checking loop, all variables that are affected by it must be declared before this
     let args: Vec<String> = env::args().collect();
     for i in &args {
         if i == "--local" || i == "-l" {
-            dest = String::from("local");
+            configs.dest = String::from("local");
         }
         else if i == "-h" || i == "--help" {
             print_help();
@@ -32,22 +32,24 @@ fn main() {
         }
     }
 
-    if dest.trim() == "local" {
-        dest = String::from("udp://127.0.0.1:9000");
+    if configs.dest.trim() == "local" {
+        configs.dest = String::from("udp://127.0.0.1:9000");
     }
-    else if dest.is_empty() {
+    else if configs.dest.is_empty() {
         println!("Choose destination");
         io::stdin().read_line(&mut dest).expect("no");
     }
     else {
-        panic!();
+        println!("Destination is empty, defaulting to local");
+        configs.dest = String::from("udp://127.0.0.1:9000");
     }
 
-    if dest.trim() == "q" {
+    if configs.dest.trim() == "q" {
+        println!("Quitting");
         return
     }
 
-    let platform: String = String::from(env::consts::OS);
+    configs.platform = String::from(env::consts::OS);
     println!("Press h for help");
 
     loop {
@@ -61,19 +63,19 @@ fn main() {
             println!("c (Custom): Custom settings for resolution and framerate");
         }
         else if input_mode.trim() == "p1" {
-            invoke_ffmpeg(&platform, &String::from("native"), &String::from("60"), &dest.trim().to_string());
+            invoke_ffmpeg(configs);
             break
         }
         else if input_mode.trim() == "p2" {
-            invoke_ffmpeg(&platform, &String::from("1280x720"), &String::from("30"), &dest.trim().to_string());
+            invoke_ffmpeg(configs);
             break
         }
         else if input_mode.trim() == "p3" {
-            invoke_ffmpeg(&platform, &String::from("native"), &String::from("30"), &dest.trim().to_string());
+            invoke_ffmpeg(configs);
             break
         }
         else if input_mode.trim() == "c" {
-            query_args(&dest, &platform);
+            query_args(configs);
             break
         }
         else if input_mode.trim() == "q" {
@@ -86,56 +88,53 @@ fn main() {
     }
 }
 
-fn query_args(destination: &String, platform: &String) {
+fn query_args(configs: Config) {
     let mut resolution: String = String::new();
     let mut framerate: String = String::new();
+    let mut configs = configs;
 
     println!("Choose a resolution");
     io::stdin().read_line(&mut resolution).expect("no");
+    configs.resolution = resolution;
     println!("Choose a framerate");
     io::stdin().read_line(&mut framerate).expect("no");
-    invoke_ffmpeg(&platform, &resolution, &framerate, &destination);
+    configs.framerate = framerate;
+    invoke_ffmpeg(configs);
 }
 
-fn invoke_ffmpeg(platform: &String, resolution: &String, framerate: &String, destination: &String) {
+fn invoke_ffmpeg(configs: Config) {
     let video_in;
-    let binary;
-    let mplayer;
-    if platform == "linux" {
+    if configs.platform == "linux" {
         video_in = "x11grab";
-        binary = "ffmpeg";
-        mplayer = "mpv";
     }
-    else if platform == "windows" {
+    else if configs.platform == "windows" {
         video_in = "dshow";
-        binary = "ffmpeg.exe";
-        mplayer = "mpv.exe";
     }
     else {
         panic!("Platform unknown or not supported");
     }
 
-    if resolution.trim() == "native" {
-        if destination.trim() == "udp://127.0.0.1:9000" {
-            Command::new(mplayer).arg(destination).arg("-profile=low-latency").stdout(Stdio::null()).spawn().expect("Cannot open mpv");
+    if configs.resolution.trim() == "native" {
+        if configs.dest.trim() == "udp://127.0.0.1:9000" {
+            Command::new(configs.mplayer).arg(&configs.dest).arg("-profile=low-latency").stdout(Stdio::null()).spawn().expect("Cannot open mpv");
         }
-        Command::new(binary).arg("-f").arg(video_in)
-            .arg("-framerate").arg(framerate)
+        Command::new(configs.ffmpeg_binary).arg("-f").arg(video_in)
+            .arg("-framerate").arg(configs.framerate)
             .arg("-i").arg(":0")
             .arg("-c:v").arg("libx264").arg("-preset").arg("ultrafast").arg("-tune").arg("zerolatency")
-            .arg("-f").arg("mpegts").arg(destination)
+            .arg("-f").arg("mpegts").arg(&configs.dest)
             .status().expect("Cannot open ffmpeg");
     }
     else {
-        if destination.trim() == "udp://127.0.0.1:9000" {
-            Command::new(mplayer).arg(destination).arg("-profile=low-latency").stdout(Stdio::null()).spawn().expect("Cannot open mpv");
+        if configs.dest.trim() == "udp://127.0.0.1:9000" {
+            Command::new(configs.mplayer).arg(&configs.dest).arg("-profile=low-latency").stdout(Stdio::null()).spawn().expect("Cannot open mpv");
         }
-        Command::new(binary).arg("-f").arg(video_in)
-            .arg("-framerate").arg(framerate)
+        Command::new(configs.ffmpeg_binary).arg("-f").arg(video_in)
+            .arg("-framerate").arg(configs.framerate)
             .arg("-i").arg(":0")
-            .arg("-s").arg(resolution)
+            .arg("-s").arg(configs.resolution)
             .arg("-c:v").arg("libx264").arg("-preset").arg("ultrafast").arg("-tune").arg("zerolatency")
-            .arg("-f").arg("mpegts").arg(destination)
+            .arg("-f").arg("mpegts").arg(&configs.dest)
             .status().expect("Cannot open ffmpeg");
     }
 }
@@ -146,28 +145,46 @@ fn print_help() {
     println!(" -h, --help\t\tPrint this message");
 }
 
-fn read_config() -> Option<Config> {
-    let config_table = fs::read_to_string("config.toml").expect("Cannot read config file").parse::<Table>().unwrap();
+fn read_config() -> Config {
+    let mut configs: Config = Config {dest: String::new(),
+        framerate: String::new(),
+        resolution: String::new(),
+        mplayer: String::new(),
+        ffmpeg_binary: String::new(),
+        platform: String::new()};
+
+    let config_table;
+    if Path::new("config.toml").is_file() == true {
+        config_table = fs::read_to_string("config.toml").expect("Cannot read config file").parse::<Table>().unwrap();
+    }
+    else {
+        println!("Config file is missing");
+        return configs
+    }
 
     if config_table.is_empty() == true {
-        println!("Config file empty");
-        return None
+        println!("Config file is empty");
+        return configs
     }
-
-    let mut configs: Config = Config {dest: String::new(),
-        framerate: 0,
-        resolution: String::new()};
-
-    if config_table["config"].get("dest") != None {
-        configs.dest = String::from(config_table["config"]["dest"].as_str()?)
-    }
-    if config_table["config"].get("framerate") != None {
-        configs.framerate = config_table["config"]["framerate"].as_integer().unwrap()
-    }
-    if config_table["config"].get("resolution") != None {
-        configs.resolution = String::from(config_table["config"]["resolution"].as_str()?)
-    }
+    
+    if config_table.get("config") != None {
+        if config_table["config"].get("dest") != None {
+            configs.dest = String::from(config_table["config"].get("dest").unwrap().as_str().unwrap())
+        }
+        if config_table["config"].get("framerate") != None {
+            configs.framerate = config_table["config"].get("framerate").unwrap().as_integer().unwrap().to_string()
+        }
+        if config_table["config"].get("resolution") != None {
+            configs.resolution = String::from(config_table["config"].get("resolution").unwrap().as_str().unwrap())
+        }
+        if config_table["config"].get("mplayer") != None {
+            configs.mplayer = String::from(config_table["config"].get("mplayer").unwrap().as_str().unwrap())
+        }
+        if config_table["config"].get("ffmpeg_binary") != None {
+            configs.ffmpeg_binary = String::from(config_table["config"].get("ffmpeg_binary").unwrap().as_str().unwrap())
+        }
+}
 
     println!("{:?}", configs);
-    return Some(configs)
+    return configs
 }
