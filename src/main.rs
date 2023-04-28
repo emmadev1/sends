@@ -16,8 +16,6 @@ struct Config {
 fn main() {
     //thread::spawn(|| {gui::main_gui()});
 
-    let mut dest: String = String::new();
-
     let mut configs: Config = read_config();
 
     //Argument checking loop, all variables that are affected by it must be declared before this
@@ -32,12 +30,11 @@ fn main() {
         }
     }
 
-    if configs.dest.trim() == "local" {
-        configs.dest = String::from("udp://127.0.0.1:9000");
-    }
-    else if configs.dest.is_empty() {
+    if configs.dest.is_empty() {
         println!("Choose destination");
+        let mut dest: String = String::new();
         io::stdin().read_line(&mut dest).expect("no");
+        configs.dest = String::from(dest.trim());
     }
     else {
         println!("Destination is empty, defaulting to local");
@@ -47,10 +44,13 @@ fn main() {
     if configs.dest.trim() == "q" {
         println!("Quitting");
         return
+    } else if configs.dest.trim() == "local" {
+        configs.dest = String::from("udp://127.0.0.1:9000");
     }
 
     configs.platform = String::from(env::consts::OS);
     println!("Press h for help");
+    println!("{:?}", configs);
 
     loop {
         let mut input_mode: String = String::new();
@@ -159,11 +159,15 @@ fn read_config() -> Config {
     }
     else {
         println!("Config file is missing");
+        configs.ffmpeg_binary = String::from("ffmpeg");
+        configs.mplayer = String::from("mpv");
         return configs
     }
 
     if config_table.is_empty() == true {
         println!("Config file is empty");
+        configs.ffmpeg_binary = String::from("ffmpeg");
+        configs.mplayer = String::from("mpv");
         return configs
     }
     
@@ -171,18 +175,23 @@ fn read_config() -> Config {
         if config_table["config"].get("dest") != None {
             configs.dest = String::from(config_table["config"].get("dest").unwrap().as_str().unwrap())
         }
+
         if config_table["config"].get("framerate") != None {
             configs.framerate = config_table["config"].get("framerate").unwrap().as_integer().unwrap().to_string()
         }
+
         if config_table["config"].get("resolution") != None {
             configs.resolution = String::from(config_table["config"].get("resolution").unwrap().as_str().unwrap())
         }
+
         if config_table["config"].get("mplayer") != None {
             configs.mplayer = String::from(config_table["config"].get("mplayer").unwrap().as_str().unwrap())
         }
+
         if config_table["config"].get("ffmpeg_binary") != None {
             configs.ffmpeg_binary = String::from(config_table["config"].get("ffmpeg_binary").unwrap().as_str().unwrap())
         }
+        
 }
 
     println!("{:?}", configs);
