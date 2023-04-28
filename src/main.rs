@@ -17,6 +17,7 @@ fn main() {
     //thread::spawn(|| {gui::main_gui()});
 
     let mut configs: Config = read_config();
+    let mut input_mode: String = String::new();
 
     //Argument checking loop, all variables that are affected by it must be declared before this
     let args: Vec<String> = env::args().collect();
@@ -27,6 +28,9 @@ fn main() {
         else if i == "-h" || i == "--help" {
             print_help();
             return
+        }
+        else if i == "-p" || i == "--pass" {
+            input_mode = String::from("p");
         }
     }
 
@@ -54,7 +58,17 @@ fn main() {
     println!("{:?}", configs); // DEBUG
 
     loop {
-        let mut input_mode: String = String::new();
+        if input_mode == "p" {
+            if configs.resolution.is_empty() || configs.framerate.is_empty() {
+                println!("Missing configuration parameters, exiting");
+                break
+            }
+            else {
+                invoke_ffmpeg(configs);
+                break
+            }
+        }
+
         io::stdin().read_line(&mut input_mode).expect("no");
 
         if input_mode.trim() == "h" {
@@ -86,6 +100,10 @@ fn main() {
         }
         else if input_mode.trim() == "c" {
             query_args(configs);
+            break
+        }
+        else if input_mode.trim() == "p" {
+            invoke_ffmpeg(configs);
             break
         }
         else if input_mode.trim() == "q" {
@@ -152,6 +170,7 @@ fn invoke_ffmpeg(configs: Config) {
 fn print_help() {
     println!("Sends, a simple application to stream video and audio to friends\n");
     println!(" -l, --local\t\tStream to udp://127.0.0.1:9000");
+    println!(" -p, --pass\t\tPass settings without prompting");
     println!(" -h, --help\t\tPrint this message");
 }
 
