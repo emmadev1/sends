@@ -36,7 +36,8 @@ fn main() {
         io::stdin().read_line(&mut dest).expect("no");
         configs.dest = String::from(dest.trim());
     }
-    else {
+
+    if configs.dest.is_empty() { // We check if its empty again to ensure we have a destination
         println!("Destination is empty, defaulting to local");
         configs.dest = String::from("udp://127.0.0.1:9000");
     }
@@ -48,9 +49,9 @@ fn main() {
         configs.dest = String::from("udp://127.0.0.1:9000");
     }
 
-    configs.platform = String::from(env::consts::OS);
+    configs.platform = String::from(env::consts::OS); // Moving this to another place to group it with the other definitions would be nice
     println!("Press h for help");
-    println!("{:?}", configs);
+    println!("{:?}", configs); // DEBUG
 
     loop {
         let mut input_mode: String = String::new();
@@ -63,14 +64,23 @@ fn main() {
             println!("c (Custom): Custom settings for resolution and framerate");
         }
         else if input_mode.trim() == "p1" {
+            configs.resolution = String::from("native");
+            configs.framerate = String::from("60");
+            println!("{:?}", configs); // DEBUG
             invoke_ffmpeg(configs);
             break
         }
         else if input_mode.trim() == "p2" {
+            configs.resolution = String::from("1280x720");
+            configs.framerate = String::from("30");
+            println!("{:?}", configs); // DEBUG
             invoke_ffmpeg(configs);
             break
         }
         else if input_mode.trim() == "p3" {
+            configs.resolution = String::from("native");
+            configs.framerate = String::from("30");
+            println!("{:?}", configs); // DEBUG
             invoke_ffmpeg(configs);
             break
         }
@@ -194,6 +204,6 @@ fn read_config() -> Config {
         
 }
 
-    println!("{:?}", configs);
+    println!("{:?}", configs); // DEBUG
     return configs
 }
