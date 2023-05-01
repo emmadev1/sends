@@ -17,7 +17,6 @@ fn main() {
     //thread::spawn(|| {gui::main_gui()});
 
     let mut configs: Config = read_config();
-    let mut input_mode: String = String::new();
 
     //Argument checking loop, all variables that are affected by it must be declared before this
     let args: Vec<String> = env::args().collect();
@@ -29,16 +28,6 @@ fn main() {
             print_help();
             return
         }
-        else if i == "-p" || i == "--pass" {
-            input_mode = String::from("p");
-        }
-    }
-
-    if configs.dest.is_empty() {
-        println!("Choose destination");
-        let mut dest: String = String::new();
-        io::stdin().read_line(&mut dest).expect("no");
-        configs.dest = String::from(dest.trim());
     }
 
     if configs.dest.is_empty() { // We check if its empty again to ensure we have a destination
@@ -46,88 +35,21 @@ fn main() {
         configs.dest = String::from("udp://127.0.0.1:9000");
     }
 
-    if configs.dest.trim() == "q" {
-        println!("Quitting");
-        return
-    } else if configs.dest.trim() == "local" {
+    if configs.dest == "local" {
         configs.dest = String::from("udp://127.0.0.1:9000");
     }
 
     configs.platform = String::from(env::consts::OS); // Moving this to another place to group it with the other definitions would be nice
-    println!("Press h for help");
     println!("{:?}", configs); // DEBUG
 
-    loop {
-        if input_mode == "p" {
-            if configs.resolution.is_empty() || configs.framerate.is_empty() {
-                println!("Missing configuration parameters, exiting");
-                break
-            }
-            else {
-                invoke_ffmpeg(configs);
-                break
-            }
-        }
-
-        io::stdin().read_line(&mut input_mode).expect("no");
-
-        if input_mode.trim() == "h" {
-            println!("p1 (Preset 1): Native resolution at 60 fps");
-            println!("p2 (Preset 2): 720p resolution at 30 fps");
-            println!("p3 (Preset 3): Native resolution at 30 fps");
-            println!("c (Custom): Custom settings for resolution and framerate");
-        }
-        else if input_mode.trim() == "p1" {
-            configs.resolution = String::from("native");
-            configs.framerate = String::from("60");
-            println!("{:?}", configs); // DEBUG
-            invoke_ffmpeg(configs);
-            break
-        }
-        else if input_mode.trim() == "p2" {
-            configs.resolution = String::from("1280x720");
-            configs.framerate = String::from("30");
-            println!("{:?}", configs); // DEBUG
-            invoke_ffmpeg(configs);
-            break
-        }
-        else if input_mode.trim() == "p3" {
-            configs.resolution = String::from("native");
-            configs.framerate = String::from("30");
-            println!("{:?}", configs); // DEBUG
-            invoke_ffmpeg(configs);
-            break
-        }
-        else if input_mode.trim() == "c" {
-            query_args(configs);
-            break
-        }
-        else if input_mode.trim() == "p" {
-            invoke_ffmpeg(configs);
-            break
-        }
-        else if input_mode.trim() == "q" {
-            println!("Quitting");
-            break
-        }
-        else {
-            println!("Choose a valid mode of operation");
-        }
+    if configs.resolution.is_empty() || configs.framerate.is_empty() {
+        println!("Missing configuration parameters, exiting");
+        return
     }
-}
-
-fn query_args(configs: Config) {
-    let mut resolution: String = String::new();
-    let mut framerate: String = String::new();
-    let mut configs = configs;
-
-    println!("Choose a resolution");
-    io::stdin().read_line(&mut resolution).expect("no");
-    configs.resolution = resolution;
-    println!("Choose a framerate");
-    io::stdin().read_line(&mut framerate).expect("no");
-    configs.framerate = framerate;
-    invoke_ffmpeg(configs);
+    else {
+        invoke_ffmpeg(configs);
+        return
+    }
 }
 
 fn invoke_ffmpeg(configs: Config) {
