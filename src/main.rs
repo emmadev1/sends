@@ -8,6 +8,7 @@ struct Config {
     dest: String,
     framerate: String,
     resolution: String,
+    audio_source: String,
     mplayer: String,
     ffmpeg_binary: String,
     platform: String
@@ -42,8 +43,8 @@ fn main() {
     configs.platform = String::from(env::consts::OS); // Moving this to another place to group it with the other definitions would be nice
     println!("{:?}", configs); // DEBUG
 
-    if configs.resolution.is_empty() || configs.framerate.is_empty() {
-        println!("Missing configuration parameters, exiting");
+    if configs.resolution.is_empty() || configs.framerate.is_empty() || configs.audio_source.is_empty() {
+        println!("Missing key configuration parameters, exiting");
         return
     }
     else {
@@ -54,11 +55,14 @@ fn main() {
 
 fn invoke_ffmpeg(configs: Config) {
     let video_in;
+    let audio_in;
     if configs.platform == "linux" {
         video_in = "x11grab";
+        audio_in = "pulse";
     }
     else if configs.platform == "windows" {
         video_in = "dshow";
+        audio_in = "dshow";
     }
     else {
         panic!("Platform unknown or not supported");
@@ -71,6 +75,8 @@ fn invoke_ffmpeg(configs: Config) {
         Command::new(configs.ffmpeg_binary).arg("-f").arg(video_in)
             .arg("-framerate").arg(configs.framerate)
             .arg("-i").arg(":0")
+            .arg("-f").arg(audio_in)
+            .arg("-i").arg(configs.audio_source)
             .arg("-c:v").arg("libx264").arg("-preset").arg("ultrafast").arg("-tune").arg("zerolatency")
             .arg("-f").arg("mpegts").arg(&configs.dest)
             .status().expect("Cannot open ffmpeg");
@@ -81,8 +87,10 @@ fn invoke_ffmpeg(configs: Config) {
         }
         Command::new(configs.ffmpeg_binary).arg("-f").arg(video_in)
             .arg("-framerate").arg(configs.framerate)
-            .arg("-i").arg(":0")
             .arg("-s").arg(configs.resolution)
+            .arg("-i").arg(":0")
+            .arg("-f").arg(audio_in)
+            .arg("-i").arg(configs.audio_source)
             .arg("-c:v").arg("libx264").arg("-preset").arg("ultrafast").arg("-tune").arg("zerolatency")
             .arg("-f").arg("mpegts").arg(&configs.dest)
             .status().expect("Cannot open ffmpeg");
@@ -92,7 +100,6 @@ fn invoke_ffmpeg(configs: Config) {
 fn print_help() {
     println!("Sends, a simple application to stream video and audio to friends\n");
     println!(" -l, --local\t\tStream to udp://127.0.0.1:9000");
-    println!(" -p, --pass\t\tPass settings without prompting");
     println!(" -h, --help\t\tPrint this message");
 }
 
@@ -100,6 +107,7 @@ fn read_config() -> Config {
     let mut configs: Config = Config {dest: String::new(),
         framerate: String::new(),
         resolution: String::new(),
+        audio_source: String::new(),
         mplayer: String::new(),
         ffmpeg_binary: String::new(),
         platform: String::new()};
@@ -141,6 +149,10 @@ fn read_config() -> Config {
 
         if config_table["config"].get("ffmpeg_binary") != None {
             configs.ffmpeg_binary = String::from(config_table["config"].get("ffmpeg_binary").unwrap().as_str().unwrap())
+        }
+
+        if config_table["config"].get("audio_source") != None {
+            configs.audio_source = String::from(config_table["config"].get("audio_source").unwrap().as_str().unwrap())
         }
         
 }
