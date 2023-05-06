@@ -82,17 +82,14 @@ fn main() {
 }
 
 fn invoke_ffmpeg_linux(configs: Config) {
-    let video_in = "x11grab";
-    let audio_in = "pulse";
-
     if configs.resolution.trim() == "native" {
         if configs.dest.trim() == "udp://127.0.0.1:9000" {
             Command::new(configs.mplayer).arg(&configs.dest).arg("-profile=low-latency").stdout(Stdio::null()).spawn().expect("Cannot open {configs.mplayer}");
         }
-        Command::new(configs.ffmpeg_binary).arg("-f").arg(video_in)
+        Command::new(configs.ffmpeg_binary).arg("-f").arg("x11grab")
             .arg("-framerate").arg(configs.framerate)
             .arg("-i").arg(":0")
-            .arg("-f").arg(audio_in)
+            .arg("-f").arg("pulse")
             .arg("-i").arg(configs.audio_source)
             .arg("-c:v").arg("libx264").arg("-preset").arg("ultrafast").arg("-tune").arg("zerolatency")
             .arg("-f").arg("mpegts").arg(&configs.dest)
@@ -102,11 +99,11 @@ fn invoke_ffmpeg_linux(configs: Config) {
         if configs.dest.trim() == "udp://127.0.0.1:9000" {
             Command::new(configs.mplayer).arg(&configs.dest).arg("-profile=low-latency").stdout(Stdio::null()).spawn().expect("Cannot open {configs.mplayer}");
         }
-        Command::new(configs.ffmpeg_binary).arg("-f").arg(video_in)
+        Command::new(configs.ffmpeg_binary).arg("-f").arg("x11grab")
             .arg("-framerate").arg(configs.framerate)
             .arg("-s").arg(configs.resolution)
             .arg("-i").arg(":0")
-            .arg("-f").arg(audio_in)
+            .arg("-f").arg("pulse")
             .arg("-i").arg(configs.audio_source)
             .arg("-c:v").arg("libx264").arg("-preset").arg("ultrafast").arg("-tune").arg("zerolatency")
             .arg("-f").arg("mpegts").arg(&configs.dest)
