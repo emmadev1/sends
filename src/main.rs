@@ -5,31 +5,53 @@ pub mod gui;
 
 #[derive(Debug, PartialEq)]
 struct Config {
+    platform: String,
+    config_path: String,
     dest: String,
     framerate: String,
     resolution: String,
     audio_source: String,
     mplayer: String,
     ffmpeg_binary: String,
-    platform: String
+    record_video: bool,
+    record_audio: bool
 }
 
 fn main() {
     //thread::spawn(|| {gui::main_gui()});
+    let mut configs_init: Config = Config {platform: String::from(env::consts::OS),
+        config_path: String::new(),
+        dest: String::new(),
+        framerate: String::new(),
+        resolution: String::new(),
+        audio_source: String::new(),
+        mplayer: String::new(),
+        ffmpeg_binary: String::new(),
+        record_audio: true,
+        record_video: true};
 
-    let mut configs: Config = read_config();
+    let args: Vec<String> = env::args().collect();
+    let mut e: usize = 0;
 
     //Argument checking loop, all variables that are affected by it must be declared before this
-    let args: Vec<String> = env::args().collect();
     for i in &args {
         if i == "--local" || i == "-l" {
-            configs.dest = String::from("local");
+            configs_init.dest = String::from("local");
         }
         else if i == "-h" || i == "--help" {
             print_help();
             return
         }
+        else if i == "-c" || i == "--config" {
+            if args.get(e + 1) != None {
+                configs_init.config_path = String::from(&args[e + 1]);
+            }
+        }
+        e += 1;
     }
+
+    let mut configs: Config = read_config(configs_init);
+
 
     if configs.dest.is_empty() { // We check if its empty again to ensure we have a destination
         println!("Destination is empty, defaulting to local");
@@ -40,7 +62,6 @@ fn main() {
         configs.dest = String::from("udp://127.0.0.1:9000");
     }
 
-    configs.platform = String::from(env::consts::OS); // Moving this to another place to group it with the other definitions would be nice
     println!("{:?}", configs); // DEBUG
 
     if configs.resolution.is_empty() || configs.framerate.is_empty() || configs.audio_source.is_empty() {
@@ -48,29 +69,25 @@ fn main() {
         return
     }
     else {
-        invoke_ffmpeg(configs);
-        return
+        if configs.platform == "linux" {
+            invoke_ffmpeg_linux(configs);
+        }
+        else if configs.platform == "windows" {
+            invoke_ffmpeg_windows(configs);
+        }
+        else {
+            panic!("Unkown or unsupported platform");
+        }
     }
 }
 
-fn invoke_ffmpeg(configs: Config) {
-    let video_in;
-    let audio_in;
-    if configs.platform == "linux" {
-        video_in = "x11grab";
-        audio_in = "pulse";
-    }
-    else if configs.platform == "windows" {
-        video_in = "dshow";
-        audio_in = "dshow";
-    }
-    else {
-        panic!("Platform unknown or not supported");
-    }
+fn invoke_ffmpeg_linux(configs: Config) {
+    let video_in = "x11grab";
+    let audio_in = "pulse";
 
     if configs.resolution.trim() == "native" {
         if configs.dest.trim() == "udp://127.0.0.1:9000" {
-            Command::new(configs.mplayer).arg(&configs.dest).arg("-profile=low-latency").stdout(Stdio::null()).spawn().expect("Cannot open mpv");
+            Command::new(configs.mplayer).arg(&configs.dest).arg("-profile=low-latency").stdout(Stdio::null()).spawn().expect("Cannot open {configs.mplayer}");
         }
         Command::new(configs.ffmpeg_binary).arg("-f").arg(video_in)
             .arg("-framerate").arg(configs.framerate)
@@ -83,7 +100,7 @@ fn invoke_ffmpeg(configs: Config) {
     }
     else {
         if configs.dest.trim() == "udp://127.0.0.1:9000" {
-            Command::new(configs.mplayer).arg(&configs.dest).arg("-profile=low-latency").stdout(Stdio::null()).spawn().expect("Cannot open mpv");
+            Command::new(configs.mplayer).arg(&configs.dest).arg("-profile=low-latency").stdout(Stdio::null()).spawn().expect("Cannot open {configs.mplayer}");
         }
         Command::new(configs.ffmpeg_binary).arg("-f").arg(video_in)
             .arg("-framerate").arg(configs.framerate)
@@ -97,24 +114,28 @@ fn invoke_ffmpeg(configs: Config) {
     }
 }
 
+fn invoke_ffmpeg_windows(configs: Config) {
+    println!("not yet");
+}
+
 fn print_help() {
     println!("Sends, a simple application to stream video and audio to friends\n");
     println!(" -l, --local\t\tStream to udp://127.0.0.1:9000");
+    println!(" -c, --config\t\tPath to config file");
     println!(" -h, --help\t\tPrint this message");
 }
 
-fn read_config() -> Config {
-    let mut configs: Config = Config {dest: String::new(),
-        framerate: String::new(),
-        resolution: String::new(),
-        audio_source: String::new(),
-        mplayer: String::new(),
-        ffmpeg_binary: String::new(),
-        platform: String::new()};
-
+fn read_config(mut configs: Config) -> Config {
     let config_table;
+
     if Path::new("config.toml").is_file() == true {
         config_table = fs::read_to_string("config.toml").expect("Cannot read config file").parse::<Table>().unwrap();
+    } 
+    else if Path::new("config/config.toml").is_file() == true {
+        config_table = fs::read_to_string("config/config.toml").expect("Cannot read config file").parse::<Table>().unwrap();
+    }
+    else if Path::new(&configs.config_path).is_file() == true {
+        config_table = fs::read_to_string(&configs.config_path).expect("Cannot read config file").parse::<Table>().unwrap();
     }
     else {
         println!("Config file is missing");
@@ -131,7 +152,7 @@ fn read_config() -> Config {
     }
     
     if config_table.get("config") != None {
-        if config_table["config"].get("dest") != None {
+        if config_table["config"].get("dest") != None && configs.dest.is_empty() == true {
             configs.dest = String::from(config_table["config"].get("dest").unwrap().as_str().unwrap())
         }
 
@@ -154,8 +175,7 @@ fn read_config() -> Config {
         if config_table["config"].get("audio_source") != None {
             configs.audio_source = String::from(config_table["config"].get("audio_source").unwrap().as_str().unwrap())
         }
-        
-}
+    }
 
     println!("{:?}", configs); // DEBUG
     return configs
