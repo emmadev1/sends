@@ -1,8 +1,6 @@
 use std::{process::{Command, Stdio}, io, env, thread, fs, path::Path};
 use toml::Table;
 
-pub mod gui;
-
 #[derive(Debug, PartialEq)]
 struct Config {
     platform: String,
@@ -16,7 +14,8 @@ struct Config {
     record_video: bool,
     record_audio: bool,
     default_pulse_sink: String,
-    enable_pulse_hack: bool
+    enable_pulse_hack: bool,
+    playback: bool,
 }
 
 fn main() {
@@ -32,7 +31,8 @@ fn main() {
         record_audio: true,
         record_video: true,
         default_pulse_sink: String::new(),
-        enable_pulse_hack: false};
+        enable_pulse_hack: false,
+        playback: false};
 
     let args: Vec<String> = env::args().collect();
     let mut e: usize = 0;
@@ -59,14 +59,14 @@ fn main() {
 
     let mut configs: Config = read_config(configs_init);
 
-    if configs.enable_pulse_hack == true {
+    if configs.enable_pulse_hack == true || configs.platform == "Linux" {
         pulse_setup(&configs);
     }
 
 
     if configs.dest.is_empty() { // We check if its empty again to ensure we have a destination
-        println!("Destination is empty, defaulting to local");
-        configs.dest = String::from("udp://127.0.0.1:9000");
+        println!("Destination is missing, exiting");
+        return
     }
 
     if configs.dest == "local" {
@@ -87,7 +87,7 @@ fn main() {
             invoke_ffmpeg_windows(configs);
         }
         else {
-            panic!("Unkown or unsupported platform");
+            panic!("Unknown or unsupported platform");
         }
     }
 }
@@ -101,7 +101,7 @@ fn pulse_setup(configs: &Config) {
 
 fn invoke_ffmpeg_linux(configs: Config) {
     if configs.resolution.trim() == "native" {
-        if configs.dest.trim() == "udp://127.0.0.1:9000" {
+        if configs.dest.trim() == "udp://127.0.0.1:9000" || configs.playback == true {
             Command::new(configs.mplayer).arg(&configs.dest).arg("-profile=low-latency").stdout(Stdio::null()).spawn().expect("Cannot open {configs.mplayer}");
         }
         Command::new(configs.ffmpeg_binary).arg("-f").arg("x11grab")
@@ -137,20 +137,21 @@ fn print_help() {
     println!("Sends, a simple application to stream video and audio to friends\n");
     println!(" -l, --local\t\tStream to udp://127.0.0.1:9000");
     println!(" -c, --config\t\tPath to config file");
+    println!(" -p, --pulse\t\tUse pulseauduio's module-combine-sink");
     println!(" -h, --help\t\tPrint this message");
 }
 
 fn read_config(mut configs: Config) -> Config {
     let config_table;
 
-    if Path::new("config.toml").is_file() == true {
+    if Path::new(&configs.config_path).is_file() == true {
+        config_table = fs::read_to_string(&configs.config_path).expect("Cannot read config file").parse::<Table>().unwrap();
+    }
+    else if Path::new("config.toml").is_file() == true {
         config_table = fs::read_to_string("config.toml").expect("Cannot read config file").parse::<Table>().unwrap();
     } 
     else if Path::new("config/config.toml").is_file() == true {
         config_table = fs::read_to_string("config/config.toml").expect("Cannot read config file").parse::<Table>().unwrap();
-    }
-    else if Path::new(&configs.config_path).is_file() == true {
-        config_table = fs::read_to_string(&configs.config_path).expect("Cannot read config file").parse::<Table>().unwrap();
     }
     else {
         println!("Config file is missing");
