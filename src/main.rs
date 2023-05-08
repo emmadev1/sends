@@ -14,7 +14,9 @@ struct Config {
     mplayer: String,
     ffmpeg_binary: String,
     record_video: bool,
-    record_audio: bool
+    record_audio: bool,
+    default_pulse_sink: String,
+    enable_pulse_hack: bool
 }
 
 fn main() {
@@ -28,7 +30,9 @@ fn main() {
         mplayer: String::new(),
         ffmpeg_binary: String::new(),
         record_audio: true,
-        record_video: true};
+        record_video: true,
+        default_pulse_sink: String::new(),
+        enable_pulse_hack: false};
 
     let args: Vec<String> = env::args().collect();
     let mut e: usize = 0;
@@ -42,6 +46,9 @@ fn main() {
             print_help();
             return
         }
+        else if i == "-p" || i == "--pulse" {
+            configs_init.enable_pulse_hack = true;
+        }
         else if i == "-c" || i == "--config" {
             if args.get(e + 1) != None {
                 configs_init.config_path = String::from(&args[e + 1]);
@@ -51,6 +58,10 @@ fn main() {
     }
 
     let mut configs: Config = read_config(configs_init);
+
+    if configs.enable_pulse_hack == true {
+        pulse_setup(&configs);
+    }
 
 
     if configs.dest.is_empty() { // We check if its empty again to ensure we have a destination
@@ -79,6 +90,13 @@ fn main() {
             panic!("Unkown or unsupported platform");
         }
     }
+}
+
+fn pulse_setup(configs: &Config) {
+    let sink = &configs.default_pulse_sink;
+    let mut init = String::from("slaves=");
+    init += &sink;
+    Command::new("pactl").arg("load-module").arg("module-combine-sink").arg("sink_name=sends").arg(init).spawn().expect("Cannot run pactl");
 }
 
 fn invoke_ffmpeg_linux(configs: Config) {
@@ -171,6 +189,9 @@ fn read_config(mut configs: Config) -> Config {
 
         if config_table["config"].get("audio_source") != None {
             configs.audio_source = String::from(config_table["config"].get("audio_source").unwrap().as_str().unwrap())
+        }
+        if config_table["config"].get("default_pulse_sink") != None {
+            configs.default_pulse_sink = String::from(config_table["config"].get("default_pulse_sink").unwrap().as_str().unwrap())
         }
     }
 
