@@ -1,0 +1,35 @@
+# Uncomment lines to enable them
+# Command line arguments will override the settings in this file
+# Main configuration block. You need to have this
+[config]
+
+# Where to stream (can be a file or an uri ex: udp://127.0.0.1:300). If you dont put the 
+# absolute path of a file here it will look for it in your current working directory
+# Is a string
+#dest = "local"
+
+# Framerate of the recording. Is an integer
+#framerate = 30
+
+# Resolution of the recording. Is a string
+#resolution = "native"
+
+# Path of the media player for playback. Is a string
+#mplayer = "/path/to/media_player"
+
+# Path of the ffmpeg binary. Is a string
+# On linux it will just assume its already on your path so you can just ignore this
+#ffmpeg_binary = "/path/to/ffmpeg"
+
+# Number of pulseaudio source or name. If you want to look it up run pactl list short sources. OR
+# If you are on windows, name of the dshow audio source.
+# Is a string 
+#audio_source = "5"
+
+#record_video = true
+
+#record_audio = true
+
+# Full name of the pulseaudio sink that you are listening to. Is a string
+#default_pulse_sink = "verylongname"
+
