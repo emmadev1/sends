@@ -60,7 +60,8 @@ fn main() {
     let mut configs: Config = read_config(configs_init);
 
     if configs.enable_pulse_hack == true || configs.platform == "Linux" {
-        pulse_setup(&configs);
+        configs.audio_source = String::new();
+        configs.audio_source = pulse_setup(&configs);
     }
 
 
@@ -92,14 +93,20 @@ fn main() {
     }
 }
 
-fn pulse_setup(configs: &Config) {
+fn pulse_setup(configs: &Config) -> String {
     let sink = &configs.default_pulse_sink;
     let mut init = String::from("slaves=");
     init += &sink;
     Command::new("pactl").arg("load-module").arg("module-combine-sink").arg("sink_name=sends").arg(init).spawn().expect("Cannot run pactl");
+    return String::from("sends.monitor")
 }
 
 fn invoke_ffmpeg_linux(configs: Config) {
+
+    let mut something = String::new();
+    println!("Press a key to start streaming to {}", &configs.dest);
+    io::stdin().read_line(&mut something).expect("no");
+
     if configs.resolution.trim() == "native" {
         if configs.dest.trim() == "udp://127.0.0.1:9000" || configs.playback == true {
             Command::new(configs.mplayer).arg(&configs.dest).arg("-profile=low-latency").stdout(Stdio::null()).spawn().expect("Cannot open {configs.mplayer}");
